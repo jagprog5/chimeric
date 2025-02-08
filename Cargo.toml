@@ -1,0 +1,8 @@
+[package]
+name = "chimeric_engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lru = "0.13.0"
+sdl2 = { git = "https://github.com/jagprog5/rust-sdl2.git", version="0.37.0", branch = "dev", features = ["mixer", "image", "ttf", "unsafe_textures"] }
