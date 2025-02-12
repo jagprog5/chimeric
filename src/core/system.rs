@@ -411,7 +411,7 @@ impl<'sdl> ChimericSystem<'sdl> {
 
     /// load the texture from the file path if its not in the cache; used to
     /// draw to the window specified by name
-    fn texture(
+    pub fn texture(
         &mut self,
         window_name: &str,
         path: &Path,
@@ -427,7 +427,7 @@ impl<'sdl> ChimericSystem<'sdl> {
 
     /// create the texture for the rendered font, load the font as needed; used
     /// to draw to the window specified by name
-    fn text(
+    pub fn text(
         &mut self,
         window_name: &str,
         font_file: &Path,

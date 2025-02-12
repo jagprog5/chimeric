@@ -29,10 +29,8 @@ fn main() -> std::process::ExitCode {
         .join("TEMPSITC-REDUCED.TTF");
     
     chimeric_system.copy("main", &image_path, None, None).unwrap();
-    chimeric_system.copy_text("main", &font_path, 10, c"text", None, None, Rect::new(0, 0, 200, 50)).unwrap();
+    chimeric_system.copy_text("main", &font_path, 50, c"text", None, None, Rect::new(0, 0, 200, 50)).unwrap();
     chimeric_system.present();
-
-
 
     sleep(Duration::from_secs(2));
 

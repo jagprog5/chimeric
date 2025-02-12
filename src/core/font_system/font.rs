@@ -1,11 +1,12 @@
-use std::{ffi::CStr, marker::PhantomData, rc::Rc};
+use std::{ffi::{c_void, CStr}, marker::PhantomData, rc::Rc};
 
-use sdl2::{get_error, libc::{c_int, c_uint}, rwops::RWops, surface::Surface, sys::{ttf, SDL_Color, SDL_Surface}, ttf::{FontStyle, GlyphMetrics, Hinting, Sdl2TtfContext}};
+use sdl2::{get_error, libc::{c_int, c_uint}, surface::Surface, sys::{ttf, SDL_Color, SDL_RWops, SDL_Surface}, ttf::{FontStyle, GlyphMetrics, Hinting, Sdl2TtfContext}};
 
 // rust-sdl2 wasn't sufficient. needed to model a Rc holding the font data
 pub struct Font<'ttf> {
     raw: *mut ttf::TTF_Font,
-    _marker: PhantomData<&'ttf ()>,
+    rwops: *mut SDL_RWops,
+    marker: PhantomData<&'ttf ()>,
     font_file_content: Rc<Box<[u8]>>,
 }
 
@@ -16,14 +17,20 @@ impl<'ttf> Font<'ttf> {
         font_file_content: Rc<Box<[u8]>>,
     ) -> Result<Self, String> {
         let clone = font_file_content.clone();
-        let rwops = RWops::from_bytes(&font_file_content)?;
-        let raw = unsafe { ttf::TTF_OpenFontRW(rwops.raw(), 0, point_size as c_int) };
+
+        let rwops = unsafe { sdl2::sys::SDL_RWFromConstMem(font_file_content.as_ptr() as *const c_void, font_file_content.len() as c_int) };
+        if (rwops as *mut ()).is_null() {
+            return Err(get_error())
+        }
+
+        let raw = unsafe { ttf::TTF_OpenFontRW(rwops, 0, point_size as c_int) };
         if (raw as *mut ()).is_null() {
             return Err(get_error())
         }
         Ok(Self {
+            rwops,
             raw,
-            _marker: PhantomData,
+            marker: PhantomData,
             font_file_content: clone,
         })
     }
@@ -247,6 +254,11 @@ impl<'ttf> Font<'ttf> {
 
 impl<'ttf> Drop for Font<'ttf> {
     fn drop(&mut self) {
+        let ret = unsafe { ((*self.rwops).close.unwrap())(self.rwops) };
+        if ret != 0 {
+            panic!("{}", get_error());
+        }
+
         unsafe {
             // avoid close font after quit()
             if ttf::TTF_WasInit() == 1 {
