@@ -22,22 +22,32 @@ If an untrusted bundle is loaded, the worst it can do is:
  - write assets to gpu repeatedly (possibly wearing out hardware)
  - saving to disk can only happen on explicit user action (ctrl-s or prompt)
 
-## Zip bomb resistant
+## Dependencies
 
-Some assets are compressed, like a jpg image. Only safe loading implementations
-will be used, like [rust image](https://docs.rs/image/latest/image/io/type.Limits.html), which has configurable maximums (which will be exposed in the sandbox configs).
+It will use:
+
+ - [image](https://docs.rs/image/latest/image/io/type.Limits.html) for image loading. It has configurable maximums, which provides resistance again zip-bombs for image compression
+ - [ab_glyph](https://crates.io/crates/ab_glyph) for font rendering
+ - [rodio](https://docs.rs/rodio/latest/rodio/) for audio playback
+ - [rust-SDL2](https://github.com/Rust-SDL2/rust-sdl2) for window and texture management
+
+Originally, I was going to use sdl-ttf and sdl-mixer. However, this would be using an underlying c library, which is unsafe. Take for example, this [cve](https://www.cve.org/CVERecord?id=CVE-2019-7577), in which a maliciously crafted wav file could cause a heap overflow and crash. To reduce the attack surface, the above rust replacements will be used.
+
+As for the base graphics library, I'm still sticking with SDL and only using very simple static texture drawing functionality and window management. While this is inconsistent with the above policy regarding c libraries, and it has had [mistakes](https://www.cve.org/CVERecord?id=CVE-2022-4743) in the past:
+ - it has a lot of eyes on it. SDL is one of those libraries which is very battle tested and works everywhere
+ - it's simple, and something like winit + wgpu is too complex of an API for me to use. However, if a simple high level wrapper pops up in the future then it can be swapped to that instead.
 
 # Interface
 
 A bundle interacts with the world through a provided interface:
 
- - __Textures Interface__,  built off of [rust-sdl2](https://github.com/Rust-SDL2/rust-sdl2) and sdl2-ttf, but not sdl2-image 
+ - __Textures Interface__,  built off of [rust-SDL2](https://github.com/Rust-SDL2/rust-sdl2):
     - Request one of the following, and the sandbox will handle caching and memory management:
         - `image path` (all paths must be within the bundle's folder)
         - `font path, point size, text, option(wrapping width), color`
     - Once the mutable ref to the texture is obtained, it will have an API for
       drawing to, which window, with a src / dst, and optional rotation.
- - __Audio Interface__, (also rust-sdl2, sdl2-mixer)
+ - __Audio Interface__
     - Request a sound via path. Restricted to uncompressed formats (for now), as
       I can't find anything like rust-image which provides upper bounds on
       decompression, but if a upper limit can be deduced ahead of time then
@@ -89,7 +99,7 @@ recommended.
 
 ## Hot Reloading
 
-If an asset is modified then it will be reloaded. Weather it be a image, font,
+If an asset is modified then it will be reloaded. Whether it be a image, font,
 script, sound. Anything!
 
 ## Function Overriding
