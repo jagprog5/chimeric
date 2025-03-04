@@ -45,6 +45,7 @@ impl FileOrRenderedTextKey {
             data[index] = byte;
             index += 1;
         });
+        debug_assert_eq!(data.len(), data_len);
         Self {
             data
         }
@@ -73,6 +74,7 @@ impl FileOrRenderedTextKey {
             data[index] = byte;
             index += 1;
         });
+        debug_assert_eq!(data.len(), data_len);
         Self {
             data
         }
@@ -110,6 +112,7 @@ impl FileOrRenderedTextKey {
             data[index] = byte;
             index += 1;
         });
+        debug_assert_eq!(data.len(), data_len);
         Self {
             data
         }

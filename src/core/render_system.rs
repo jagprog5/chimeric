@@ -30,12 +30,20 @@ impl CanvasAndCreator {
     }
 }
 
+struct TextureWrapper(pub Texture);
+
+impl Drop for TextureWrapper {
+    fn drop(&mut self) {
+        unsafe { sdl2::sys::SDL_DestroyTexture(self.0.raw()) }
+    }
+}
+
 /// manages loading and unloading of textures, and rendering text
 pub struct RenderSystem<'sdl> {
     /// using unsafe_textures features, but that's ok; the creator and textures
     /// all live in the same struct - no realistic opportunity for misuse
-    textures: LruCache<FileOrRenderedTextKey, Texture>,
-    /// dropped after textures are dropped
+    textures: LruCache<FileOrRenderedTextKey, TextureWrapper>,
+    /// dropped after textures are dropped. important, because unsafe-texture
     cc: CanvasAndCreator,
     _phantom: PhantomData<&'sdl ()>,
 }
@@ -74,14 +82,14 @@ impl<'sdl> RenderSystem<'sdl> {
         };
 
         Ok((
-            self.textures
-                .try_get_or_insert_mut(key, || -> Result<Texture, String> {
+            &mut self.textures
+                .try_get_or_insert_mut(key, || -> Result<TextureWrapper, String> {
                     let surface = font_system.render(font_file, point_size, text, wrap_width)?;
                     self.cc
                         .creator
                         .create_texture_from_surface(surface)
-                        .map_err(|e| e.to_string())
-                })?,
+                        .map_err(|e| e.to_string()).map(|txt| TextureWrapper(txt))
+                })?.0,
             &mut self.cc.canvas,
         ))
     }
@@ -92,10 +100,10 @@ impl<'sdl> RenderSystem<'sdl> {
     /// changes to the texture (color mod, etc) may be retained to future calls
     pub fn texture(&mut self, path: &Path) -> Result<(&mut Texture, &mut Canvas<Window>), String> {
         Ok((
-            self.textures
+            &mut self.textures
                 .try_get_or_insert_mut(FileOrRenderedTextKey::from_path(path), || {
-                    self.cc.creator.load_texture(path)
-                })?,
+                    self.cc.creator.load_texture(path).map(|txt| TextureWrapper(txt))
+                })?.0,
             &mut self.cc.canvas,
         ))
     }
